@@ -125,12 +125,7 @@ unsigned int LArMCParticleHelper::GetNuanceCode(const MCParticle *const pMCParti
 
 bool LArMCParticleHelper::IsNeutrino(const MCParticle *const pMCParticle)
 {
-    const int nuance(LArMCParticleHelper::GetNuanceCode(pMCParticle));
-    if ((nuance == 0) || (nuance == 2000) || (nuance == 2001) || (nuance == 3000))
-        return false;
-
-    const int absoluteParticleId(std::abs(pMCParticle->GetParticleId()));
-    return ((NU_E == absoluteParticleId) || (NU_MU == absoluteParticleId) || (NU_TAU == absoluteParticleId));
+    return ((pMCParticle->GetParentList().empty()) && (321 == pMCParticle->GetParticleId()));
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------

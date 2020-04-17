@@ -72,23 +72,34 @@ void CheatingNeutrinoCreationAlgorithm::CreateAndSaveNeutrinoPfo(const MCParticl
 {
     pNeutrinoPfo = nullptr;
 
-    PandoraContentApi::ParticleFlowObject::Parameters pfoParameters;
-    pfoParameters.m_particleId = pMCNeutrino->GetParticleId();
-    pfoParameters.m_charge = PdgTable::GetParticleCharge(pfoParameters.m_particleId.Get());
-    pfoParameters.m_mass = PdgTable::GetParticleMass(pfoParameters.m_particleId.Get());
-    pfoParameters.m_energy = pMCNeutrino->GetEnergy();
-    pfoParameters.m_momentum = pMCNeutrino->GetMomentum();
+    for (const std::string &daughterPfoListName : m_daughterPfoListNames)
+    {
+        const PfoList *pDaughterPfoList(nullptr);
 
-    std::string neutrinoPfoListName;
-    const PfoList *pNeutrinoPfoList(nullptr);
-    PANDORA_THROW_RESULT_IF(STATUS_CODE_SUCCESS, !=, PandoraContentApi::CreateTemporaryListAndSetCurrent(*this, pNeutrinoPfoList, neutrinoPfoListName));
-    PANDORA_THROW_RESULT_IF(STATUS_CODE_SUCCESS, !=, PandoraContentApi::ParticleFlowObject::Create(*this, pfoParameters, pNeutrinoPfo));
+        if (STATUS_CODE_SUCCESS != PandoraContentApi::GetList(*this, daughterPfoListName, pDaughterPfoList))
+        {
+            if (PandoraContentApi::GetSettings(*this)->ShouldDisplayAlgorithmInfo())
+                std::cout << "CheatingNeutrinoCreationAlgorithm: pfo list " << daughterPfoListName << " unavailable." << std::endl;
 
-    if (!pNeutrinoPfoList || pNeutrinoPfoList->empty())
+            continue;
+        }
+
+        for (const ParticleFlowObject *const pDaughterPfo : *pDaughterPfoList)
+        {
+            const MCParticle *pMCParticle(LArMCParticleHelper::GetMainMCParticle(pDaughterPfo));
+
+            if (pMCParticle == pMCNeutrino)
+            {
+                pNeutrinoPfo = pDaughterPfo;
+                const PfoList neutrinoPfoList(1, pNeutrinoPfo);
+                PANDORA_THROW_RESULT_IF(STATUS_CODE_SUCCESS, !=, PandoraContentApi::SaveList(*this, daughterPfoListName, m_neutrinoPfoListName, neutrinoPfoList));
+                return;
+            }
+        }
+    }
+
+    if (!pNeutrinoPfo)
         throw StatusCodeException(STATUS_CODE_FAILURE);
-
-    PANDORA_THROW_RESULT_IF(STATUS_CODE_SUCCESS, !=, PandoraContentApi::SaveList<Pfo>(*this, m_neutrinoPfoListName));
-    PANDORA_THROW_RESULT_IF(STATUS_CODE_SUCCESS, !=, PandoraContentApi::ReplaceCurrentList<Pfo>(*this, m_neutrinoPfoListName));
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
@@ -147,6 +158,9 @@ void CheatingNeutrinoCreationAlgorithm::GetMCParticleToDaughterPfoMap(MCParticle
         for (const ParticleFlowObject *const pDaughterPfo : *pDaughterPfoList)
         {
             const MCParticle *pMCParticle(LArMCParticleHelper::GetMainMCParticle(pDaughterPfo));
+
+            if (LArMCParticleHelper::IsNeutrino(pMCParticle))
+                continue;
 
             if (m_collapseToPrimaryMCParticles)
             {

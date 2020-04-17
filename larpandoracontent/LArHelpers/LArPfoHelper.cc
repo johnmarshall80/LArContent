@@ -397,9 +397,7 @@ bool LArPfoHelper::IsNeutrinoFinalState(const ParticleFlowObject *const pPfo)
 
 bool LArPfoHelper::IsNeutrino(const ParticleFlowObject *const pPfo)
 {
-    const int absoluteParticleId(std::abs(pPfo->GetParticleId()));
-
-    if ((NU_E == absoluteParticleId) || (NU_MU == absoluteParticleId) || (NU_TAU == absoluteParticleId))
+    if ((pPfo->GetParentPfoList().empty()) && (321 == pPfo->GetParticleId()))
         return true;
 
     return false;
